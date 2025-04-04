@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online 4x4 Tic-Tac-Toe</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        .grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 5px; justify-content: center; }
+        .cell {
+            width: 80px; height: 80px;
+            font-size: 2em; display: flex;
+            align-items: center; justify-content: center;
+            border: 2px solid black; cursor: pointer;
+            background: #f0f0f0;
+        }
+        .cell.taken { cursor: not-allowed; }
+        #status { margin-top: 10px; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <h2>Online 4x4 Tic-Tac-Toe</h2>
+    <input type="text" id="roomId" placeholder="Enter Room ID" />
+    <button onclick="joinRoom()">Join Game</button>
+    <div class="grid" id="board"></div>
+    <p id="status">Enter a Room ID to Start</p>
+    <button onclick="resetGame()">Restart</button><script>
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        databaseURL: "YOUR_DATABASE_URL",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    let roomId = "";
+    let currentPlayer = "X";
+    let grid = Array(4).fill().map(() => Array(4).fill(""));
+
+    function joinRoom() {
+        roomId = document.getElementById("roomId").value.trim();
+        if (!roomId) return alert("Enter a Room ID");
+        db.ref(`games/${roomId}`).on("value", snapshot => {
+            const data = snapshot.val();
+            if (data) {
+                grid = data.grid;
+                currentPlayer = data.currentPlayer;
+                updateBoard();
+            }
+        });
+        document.getElementById("status").textContent = "Game Started! Player X's Turn";
+    }
+
+    function createBoard() {
+        board.innerHTML = "";
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+                let cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+                cell.addEventListener("click", makeMove);
+                board.appendChild(cell);
+            }
+        }
+    }
+
+    function makeMove() {
+        if (!roomId) return alert("Join a room first!");
+        let row = this.dataset.row;
+        let col = this.dataset.col;
+        if (grid[row][col] !== "") return;
+
+        grid[row][col] = currentPlayer;
+        db.ref(`games/${roomId}`).set({ grid, currentPlayer: currentPlayer === "X" ? "O" : "X" });
+    }
+
+    function updateBoard() {
+        const cells = document.querySelectorAll(".cell");
+        cells.forEach(cell => {
+            let row = cell.dataset.row;
+            let col = cell.dataset.col;
+            cell.textContent = grid[row][col];
+            if (grid[row][col]) cell.classList.add("taken");
+        });
+        document.getElementById("status").textContent = `Player ${currentPlayer}'s Turn`;
+    }
+
+    function resetGame() {
+        if (!roomId) return alert("Join a room first!");
+        grid = Array(4).fill().map(() => Array(4).fill(""));
+        currentPlayer = "X";
+        db.ref(`games/${roomId}`).set({ grid, currentPlayer });
+    }
+
+    createBoard();
+</script>
+
+</body>
+</html>
